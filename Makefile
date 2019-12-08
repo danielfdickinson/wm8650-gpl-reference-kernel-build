@@ -9,7 +9,7 @@ SHELL = /bin/bash
 
 export KCONFIG_CONFIG KBUILD_IMAGE CROSS_COMPILE
 
-all: tarbz2-pkg debpkg
+all: tarbz2-pkg deb-pkg
 
 %config:
 	mkdir -p $(BUILD_DIR)
