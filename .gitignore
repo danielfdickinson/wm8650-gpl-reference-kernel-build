@@ -1,3 +1,5 @@
 *.log
-*.tar.gz
-clp281-modules
+*.deb
+*.dsc
+*.tar.bz2
+/build

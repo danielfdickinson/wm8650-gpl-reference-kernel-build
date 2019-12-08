@@ -1,19 +1,36 @@
+ifdef DOCROSS
+CROSS_COMPILE ?= arm-none-linux-gnueabi-
+endif
 
-all: ubin
+KBUILD_IMAGE ?= uImage
+BUILD_DIR ?= $(CURDIR)/build
+KCONFIG_CONFIG ?= $(CURDIR)/configs/craig_clp281_wheezy_noinitrd
 
-menuconfig:
-	make -C ANDROID_2.6.32 menuconfig
+export KCONFIG_CONFIG KBUILD_IMAGE CROSS_COMPILE
+
+all: tarbz2-pkg debpkg
+
+%config:
+	mkdir -p $(BUILD_DIR)
+	make -C ANDROID_2.6.32 O=$(BUILD_DIR) $@
 	
-ubin:
-	make -C ANDROID_2.6.32 ubin
+%pkg: modules
+	make -C $(BUILD_DIR) $@ | tee build-$@-$(shell sh -c "date -Iminutes|tr ':' '-'").log
 
-Android_defconfig:
-	make -C ANDROID_2.6.32 Android_defconfig
-	
+$(KBUILD_IMAGE): silentoldconfig
+	cp ANDROID_2.6.32_Driver_Obj/* $(BUILD_DIR)/. -arf
+	make -C $(BUILD_DIR) $@ | tee build-$(KBUILD_IMAGE)-$(shell sh -c "date -Iminutes|tr ':' '-'").log
+
+modules: $(KBUILD_IMAGE)
+	make -C $(BUILD_DIR) $@ | tee build-modules-$(shell sh -c "date -Iminutes|tr ':' '-'").log
+
 clean:	
-	make -C ANDROID_2.6.32 clean
-	cp ANDROID_2.6.32_Driver_Obj/* ANDROID_2.6.32/. -arf
-	find ANDROID_2.6.32 -name "built-in.o" -exec rm -rf {} \;
-	find ANDROID_2.6.32 -name ".*.o.cmd" -exec rm -rf {} \;
+	rm -f *.log
+	rm -rf $(BUILD_DIR)
 
+mrproper:
+	make -C ANDROID_2.6.32 mrproper
+
+distclean: clean
+	make -C ANDROID_2.6.32 distclean
 
