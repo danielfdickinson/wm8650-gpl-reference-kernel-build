@@ -1,5 +1,5 @@
 ifdef DOCROSS
-CROSS_COMPILE ?= arm-none-linux-gnueabi-
+CROSS_COMPILE ?= arm-linux-gnueabi-
 endif
 
 KBUILD_IMAGE ?= uImage
