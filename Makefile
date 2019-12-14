@@ -24,9 +24,13 @@ define maybe_update_confnum
 		mv $(CURDIR)/localversion10confnum $(CURDIR)/old_localversion10confnum; \
 			echo ".""$$(expr $$(expr 0$$(cat $(CURDIR)/old_localversion10confnum) | tr '.' '0') + 1)" >$(CURDIR)/localversion10confnum; \
 			rm -f $(BUILD_DIR)/localversion10confnum; \
-		cp -f $(CURDIR)/localversion10confnum $(BUILD_DIR)/localversion10confnum; \
-	fi; \
+		fi; \
 		echo "$${newmd5}" > $(CURDIR)/config_md5sum; \
+		cp -f $(CURDIR)/localversion10confnum $(BUILD_DIR)/localversion10confnum; \
+		exit 2; \
+	else \
+		cp -f $(CURDIR)/localversion10confnum $(BUILD_DIR)/localversion10confnum; \
+		exit 0; \
 	fi
 endef
 
@@ -68,9 +72,13 @@ $(BUILD_DIR)/include/config/kernel.release: $(BUILD_DIR)/include/config/auto.con
 	echo "-wm8650" >$(BUILD_DIR)/localversion50platform
 	cp -f $(MYCONFIG) $(BUILD_DIR)/.config
 	make -C $(SOURCE_DIR) O=$(BUILD_DIR) MAKEFLAGS="$(SUBMAKEFLAGS)" $@
-	cp -f $(BUILD_DIR)/.config $(MYCONFIG)
-	$(call maybe_update_confnum)
-	cp -f $(CURDIR)/localversion10confnum $(BUILD_DIR)/localversion10confnum
+	$(call maybe_update_confnum) ; RET=$$? ; \
+		if [ "$${RET}" = "2" ]; then \
+			cp -f $(CURDIR)/localversion10confnum $(BUILD_DIR)/localversion10confnum; \
+			cp -f $(BUILD_DIR)/.config $(MYCONFIG); \
+		elif [ "$${RET}" != "0" ]; then \
+			false; \
+		fi
 
 # The .config logic is 'borrowed' from the kernel source
 # Without this unnecesary building occurs.
@@ -102,9 +110,13 @@ backports-%config:
 	if [ ! -r $(BUILD_DIR)/.config ]; then exit 1; fi # Error config if we haven't used main kernel %config already
 	cp -f $(MYBPCONFIG) $(BACKPORTS_SOURCE_DIR)/.config
 	make -C $(BACKPORTS_SOURCE_DIR) KLIB_BUILD=$(BUILD_DIR) CROSS_COMPILE=$(CROSS_COMPILE) ARCH=$(KARCH) MAKEFLAGS="$(SUBMAKEFLAGS) $(BPSUB)" $(subst backports-,,$@)
-	cp -f $(BACKPORTS_SOURCE_DIR)/.config $(MYBPCONFIG)
-	$(call maybe_update_md5sum)
-	cp -f $(CURDIR)/localversion10confnum $(BUILD_DIR)/localversion10confnum
+	$(call maybe_update_confnum) ; RET=$$? ; \
+		if [ "${RET}" = "1" ]; then \
+			false; \
+		elif [ "${RET}" = "2" ]; then \
+			cp -f $(CURDIR)/localversion10confnum $(BUILD_DIR)/localversion10confnum; \
+			cp -f $(BACKPORTS_SOURCE_DIR)/.config $(MYBPCONFIG); \
+		fi
 
 backports:
 	make -C $(BACKPORTS_SOURCE_DIR) KLIB_BUILD=$(BUILD_DIR) CROSS_COMPILE=$(CROSS_COMPILE) ARCH=$(KARCH) MAKEFLAGS="$(SUBMAKEFLAGS) $(BPSUB)" modules
