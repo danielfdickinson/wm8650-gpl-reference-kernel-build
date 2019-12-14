@@ -3,3 +3,4 @@
 *.dsc
 *.tar.bz2
 /build
+/old_localversion10confnum
