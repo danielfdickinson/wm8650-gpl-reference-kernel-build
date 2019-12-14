@@ -1,11 +1,10 @@
-ifdef DOCROSS
 CROSS_COMPILE ?= arm-linux-gnueabi-
-endif
 
 SOURCE_DIR ?= ANDROID_2.6.32
 KBUILD_IMAGE ?= uImage
 BUILD_DIR ?= $(CURDIR)/build
 KCONFIG_CONFIG ?= $(CURDIR)/configs/craig_clp281_wheezy_noinitrd
+KARCH=arm
 SHELL = /bin/bash
 KDEB_PKGVERSION=\$$\$$(KERNELVERSION).\$$\$$(PATCHLEVEL)-\$$\$$(SUBLEVEL)-\$$\$$(KERNELVERSION).\$$\$$(PATCHLEVEL).\$$\$$(SUBLEVEL).\$$\$$(EXTRAVERSION)-\$$\$$(localver)~cshored1
 
