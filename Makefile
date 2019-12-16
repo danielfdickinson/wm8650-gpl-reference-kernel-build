@@ -60,7 +60,7 @@ all: deb-pkg tarbz2-pkg
 
 debug-mismatch:
 	echo "-C $(BACKPORTS_SOURCE_DIR) KLIB_BUILD=$(BUILD_DIR) ARCH=$(KARCH) $(if $(J),-j) $(if $(V),V=$(V))" >$(BUILD_DIR)/pkg-backports-flags
-	{ set -o pipefail; time sh -c "KERNELRELEASE=$$(cat $(BUILD_DIR)/include/config/kernel.release|tr -d ' \n') $(shell grep -m1 '^VERSION *= *' $(SOURCE_DIR)/Makefile|tr -d ' \n') $(shell grep -m1 '^PATCHLEVEL *= *' $(SOURCE_DIR)/Makefile|tr -d ' \n') $(shell grep -m1 '^SUBLEVEL *= *' $(SOURCE_DIR)/Makefile|tr -d ' \n') $(shell grep -m1 '^EXTRAVERSION *= *' $(SOURCE_DIR)/Makefile|tr -d ' \n') make -C $(BUILD_DIR) O=$(BUILD_DIR) CROSS_COMPILE=$(CROSS_COMPILE) KBUILD_IMAGE=$(KBUILD_IMAGE) CONFIG_SHELL=$(CONFIG_SHELL) $(if $(V),V=$(V)) ARCH=$(KARCH) $(if $(J),'-j') $(if $(V),V=$(V)) CONFIG_DEBUG_SECTION_MISMATCH=y" 2>&1 | tee build-debug-mismatch-$(shell sh -c "date -Iminutes|tr ':' '-'").log; }
+	{ set -o pipefail; time sh -c "KERNELRELEASE=$$(cat $(BUILD_DIR)/include/config/kernel.release|tr -d ' \n') $(shell grep -m1 '^VERSION *= *' $(SOURCE_DIR)/Makefile|tr -d ' \n') $(shell grep -m1 '^PATCHLEVEL *= *' $(SOURCE_DIR)/Makefile|tr -d ' \n') $(shell grep -m1 '^SUBLEVEL *= *' $(SOURCE_DIR)/Makefile|tr -d ' \n') $(shell grep -m1 '^EXTRAVERSION *= *' $(SOURCE_DIR)/Makefile|tr -d ' \n') make -C $(BUILD_DIR) O=$(BUILD_DIR) CROSS_COMPILE=$(CROSS_COMPILE) KBUILD_IMAGE=$(KBUILD_IMAGE) CONFIG_SHELL=$(CONFIG_SHELL) $(if $(V),V=$(V)) ARCH=$(KARCH) $(if $(J),'-j') $(if $(V),V=$(V)) CONFIG_DEBUG_SECTION_MISMATCH=y" 2>&1 | tee build-debug-mismatch$(shell cat localversion10confnum)-$(shell cat buildnum)-$(shell sh -c "date -Iminutes|tr ':' '-'").log; }
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
@@ -73,7 +73,7 @@ $(BUILD_DIR)/include/config/kernel.release: $(BUILD_DIR)/include/config/auto.con
 
 %-pkg: $(BUILD_DIR)/include/config/kernel.release $(KBUILD_IMAGE)
 	cp $(CURDIR)/ANDROID_2.6.32_Driver_Obj/* $(BUILD_DIR)/. -arf
-	{ set -o pipefail; time sh -c "KERNELRELEASE=$$(cat $(BUILD_DIR)/include/config/kernel.release|tr -d ' \n') $(shell grep -m1 '^VERSION *= *' $(SOURCE_DIR)/Makefile|tr -d ' \n') $(shell grep -m1 '^PATCHLEVEL *= *' $(SOURCE_DIR)/Makefile|tr -d ' \n') $(shell grep -m1 '^SUBLEVEL *= *' $(SOURCE_DIR)/Makefile|tr -d ' \n') $(shell grep -m1 '^EXTRAVERSION *= *' $(SOURCE_DIR)/Makefile|tr -d ' \n') make -C $(BUILD_DIR) -f $(SOURCE_DIR)/scripts/package/Makefile O=$(BUILD_DIR) CROSS_COMPILE=$(CROSS_COMPILE) KBUILD_IMAGE=$(KBUILD_IMAGE) CONFIG_SHELL=$(CONFIG_SHELL) $(if $(V),V=$(V)) ARCH=$(KARCH) $(if $(J),'-j') $(if $(V),V=$(V)) $@" 2>&1 | tee build-package-$@-$(shell sh -c "date -Iminutes|tr ':' '-'").log; }
+	{ set -o pipefail; time sh -c "KERNELRELEASE=$$(cat $(BUILD_DIR)/include/config/kernel.release|tr -d ' \n') $(shell grep -m1 '^VERSION *= *' $(SOURCE_DIR)/Makefile|tr -d ' \n') $(shell grep -m1 '^PATCHLEVEL *= *' $(SOURCE_DIR)/Makefile|tr -d ' \n') $(shell grep -m1 '^SUBLEVEL *= *' $(SOURCE_DIR)/Makefile|tr -d ' \n') $(shell grep -m1 '^EXTRAVERSION *= *' $(SOURCE_DIR)/Makefile|tr -d ' \n') make -C $(BUILD_DIR) -f $(SOURCE_DIR)/scripts/package/Makefile O=$(BUILD_DIR) CROSS_COMPILE=$(CROSS_COMPILE) KBUILD_IMAGE=$(KBUILD_IMAGE) CONFIG_SHELL=$(CONFIG_SHELL) $(if $(V),V=$(V)) ARCH=$(KARCH) $(if $(J),'-j') $(if $(V),V=$(V)) $@" 2>&1 | tee build-package-$@$(shell cat localversion10confnum)-$(shell cat buildnum)-$(shell sh -c "date -Iminutes|tr ':' '-'").log; }
 	if [ -d $(BUILD_DIR) ] && [ -r $(BUILD_DIR)/.version ]; then cp -f $(BUILD_DIR)/.version $(CURDIR)/buildnum; fi
 
 %config: $(BUILD_DIR)
