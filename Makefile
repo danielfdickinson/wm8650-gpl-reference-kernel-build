@@ -13,9 +13,9 @@ KCONFIG_CONFIG ?= $(BUILD_DIR)/.config
 BACKPORTS_CONFIG ?= $(BACKPORTS_SOURCE_DIR)/.config
 
 define maybe_update_confnum
-	set -e;	\
+	( set -e;	\
 	oldmd5=$$(cat $(CURDIR)/config_md5sum); \
-	newmd5=$$(sed -e 's/\s.*//' $(MYCONFIG) $(MYBPCONFIG) | sed -e 's/\#\s[^C]//' | md5sum); \
+	newmd5=$$(sed -e 's/\s.*//' $(BUILD_DIR)/.config $(BACKPORTS_SOURCE_DIR)/.config | sed -e 's/\#\s[^C].*//' | md5sum); \
 	if [ "$${oldmd5}" != "$${newmd5}" ]; then \
 		if [ ! -r $(CURDIR)/localversion10confnum ]; then \
 			rm -f $(CURDIR)/localversion10confnum; \
@@ -27,11 +27,21 @@ define maybe_update_confnum
 		fi; \
 		echo "$${newmd5}" > $(CURDIR)/config_md5sum; \
 		cp -f $(CURDIR)/localversion10confnum $(BUILD_DIR)/localversion10confnum; \
+		echo "Config changed" ; \
 		exit 2; \
 	else \
 		cp -f $(CURDIR)/localversion10confnum $(BUILD_DIR)/localversion10confnum; \
-		exit 0; \
-	fi
+		configdirmd5=$$(sed -e 's/\s.*//' $(MYCONFIG) $(MYBPCONFIG) | sed -e 's/\#\s[^C].*//' | md5sum); \
+		if [ "${configdirmd5}" != "${oldmd5}" ]; then \
+			echo "Config dir config out of sync with build dir config.  Copying." ; \
+			cp -f $(BUILD_DIR)/.config $(MYCONFIG); \
+			cp -f $(BACKPORTS_SOURCE_DIR)/.config $(MYBPCONFIG); \
+			exit 2; \
+		else \
+			echo "Config is the same" ; \
+			exit 0; \
+		fi ; \
+	fi; )
 endef
 
 J ?= X
@@ -74,9 +84,12 @@ $(BUILD_DIR)/include/config/kernel.release: $(BUILD_DIR)/include/config/auto.con
 	make -C $(SOURCE_DIR) O=$(BUILD_DIR) MAKEFLAGS="$(SUBMAKEFLAGS)" $@
 	$(call maybe_update_confnum) ; RET=$$? ; \
 		if [ "$${RET}" = "2" ]; then \
+			echo "Updating config" ; \
 			cp -f $(CURDIR)/localversion10confnum $(BUILD_DIR)/localversion10confnum; \
 			cp -f $(BUILD_DIR)/.config $(MYCONFIG); \
+			echo "Updated config" ; \
 		elif [ "$${RET}" != "0" ]; then \
+			echo "Something went wrong checking the config"; \
 			false; \
 		fi
 
@@ -99,23 +112,24 @@ $(BACKPORTS_CONFIG): $(KCONFIG_CONFIG) backports-oldconfig
 $(KBUILD_IMAGE): $(KCONFIG_CONFIG) $(BACKPORTS_CONFIG)
 	echo "-C $(BACKPORTS_SOURCE_DIR) KLIB_BUILD=$(BUILD_DIR) ARCH=$(KARCH) $(if $(J),-j) $(if $(V),V=$(V))" >$(BUILD_DIR)/pkg-backports-flags
 	cp $(CURDIR)/ANDROID_2.6.32_Driver_Obj/* $(BUILD_DIR)/. -arf
-	{ set -o pipefail; time sh -c "KERNELRELEASE=$$(cat $(BUILD_DIR)/include/config/kernel.release|tr -d ' \n') $(shell grep -m1 '^VERSION *= *' $(SOURCE_DIR)/Makefile|tr -d ' \n') $(shell grep -m1 '^PATCHLEVEL *= *' $(SOURCE_DIR)/Makefile|tr -d ' \n') $(shell grep -m1 '^SUBLEVEL *= *' $(SOURCE_DIR)/Makefile|tr -d ' \n') $(shell grep -m1 '^EXTRAVERSION *= *' $(SOURCE_DIR)/Makefile|tr -d ' \n') make -C $(BUILD_DIR) O=$(BUILD_DIR) CROSS_COMPILE=$(CROSS_COMPILE) KBUILD_IMAGE=$(KBUILD_IMAGE) CONFIG_SHELL=$(CONFIG_SHELL) $(if $(V),V=$(V)) ARCH=$(KARCH) $(if $(J),'-j') $(if $(V),V=$(V)) $@" 2>&1 | tee build-kernel-$@-$(shell sh -c "date -Iminutes|tr ':' '-'").log; }
+	{ set -o pipefail; time sh -c "KERNELRELEASE=$$(cat $(BUILD_DIR)/include/config/kernel.release|tr -d ' \n') $(shell grep -m1 '^VERSION *= *' $(SOURCE_DIR)/Makefile|tr -d ' \n') $(shell grep -m1 '^PATCHLEVEL *= *' $(SOURCE_DIR)/Makefile|tr -d ' \n') $(shell grep -m1 '^SUBLEVEL *= *' $(SOURCE_DIR)/Makefile|tr -d ' \n') $(shell grep -m1 '^EXTRAVERSION *= *' $(SOURCE_DIR)/Makefile|tr -d ' \n') make -C $(BUILD_DIR) O=$(BUILD_DIR) CROSS_COMPILE=$(CROSS_COMPILE) KBUILD_IMAGE=$(KBUILD_IMAGE) CONFIG_SHELL=$(CONFIG_SHELL) $(if $(V),V=$(V)) ARCH=$(KARCH) $(if $(J),'-j') $(if $(V),V=$(V)) $@" 2>&1 | tee build-kernel-$@$(shell cat localversion10confnum)-$(shell cat buildnum)-$(shell sh -c "date -Iminutes|tr ':' '-'").log; }
 	if [ -d $(BUILD_DIR) ] && [ -r $(BUILD_DIR)/.version ]; then cp -f $(BUILD_DIR)/.version $(CURDIR)/buildnum; fi
 
 modules:
 	cp $(CURDIR)/ANDROID_2.6.32_Driver_Obj/* $(BUILD_DIR)/. -arf
-	{ set -o pipefail; time sh -c "KERNELRELEASE=$$(cat $(BUILD_DIR)/include/config/kernel.release|tr -d ' \n') $(shell grep -m1 '^VERSION *= *' $(SOURCE_DIR)/Makefile|tr -d ' \n') $(shell grep -m1 '^PATCHLEVEL *= *' $(SOURCE_DIR)/Makefile|tr -d ' \n') $(shell grep -m1 '^SUBLEVEL *= *' $(SOURCE_DIR)/Makefile|tr -d ' \n') $(shell grep -m1 '^EXTRAVERSION *= *' $(SOURCE_DIR)/Makefile|tr -d ' \n') make -C $(BUILD_DIR) O=$(BUILD_DIR) CROSS_COMPILE=$(CROSS_COMPILE) KBUILD_IMAGE=$(KBUILD_IMAGE) CONFIG_SHELL=$(CONFIG_SHELL) $(if $(V),V=$(V)) ARCH=$(KARCH) $(if $(J),'-j') $(if $(V),V=$(V)) $@" 2>&1 | tee build-modules-$@-$(shell sh -c "date -Iminutes|tr ':' '-'").log; }
+	{ set -o pipefail; time sh -c "KERNELRELEASE=$$(cat $(BUILD_DIR)/include/config/kernel.release|tr -d ' \n') $(shell grep -m1 '^VERSION *= *' $(SOURCE_DIR)/Makefile|tr -d ' \n') $(shell grep -m1 '^PATCHLEVEL *= *' $(SOURCE_DIR)/Makefile|tr -d ' \n') $(shell grep -m1 '^SUBLEVEL *= *' $(SOURCE_DIR)/Makefile|tr -d ' \n') $(shell grep -m1 '^EXTRAVERSION *= *' $(SOURCE_DIR)/Makefile|tr -d ' \n') make -C $(BUILD_DIR) O=$(BUILD_DIR) CROSS_COMPILE=$(CROSS_COMPILE) KBUILD_IMAGE=$(KBUILD_IMAGE) CONFIG_SHELL=$(CONFIG_SHELL) $(if $(V),V=$(V)) ARCH=$(KARCH) $(if $(J),'-j') $(if $(V),V=$(V)) $@" 2>&1 | tee build-modules-$@$(shell cat localversion10confnum)-$(shell cat buildnum)-$(shell sh -c "date -Iminutes|tr ':' '-'").log; }
 
 backports-%config:
 	if [ ! -r $(BUILD_DIR)/.config ]; then exit 1; fi # Error config if we haven't used main kernel %config already
 	cp -f $(MYBPCONFIG) $(BACKPORTS_SOURCE_DIR)/.config
 	make -C $(BACKPORTS_SOURCE_DIR) KLIB_BUILD=$(BUILD_DIR) CROSS_COMPILE=$(CROSS_COMPILE) ARCH=$(KARCH) MAKEFLAGS="$(SUBMAKEFLAGS) $(BPSUB)" $(subst backports-,,$@)
 	$(call maybe_update_confnum) ; RET=$$? ; \
-		if [ "${RET}" = "1" ]; then \
-			false; \
-		elif [ "${RET}" = "2" ]; then \
+		if [ "$${RET}" = "2" ]; then \
 			cp -f $(CURDIR)/localversion10confnum $(BUILD_DIR)/localversion10confnum; \
 			cp -f $(BACKPORTS_SOURCE_DIR)/.config $(MYBPCONFIG); \
+		elif [ "$${RET}" != "0" ]; then \
+			echo "Something went wrong checking the config"; \
+			false; \
 		fi
 
 backports:
