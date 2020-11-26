@@ -3,5 +3,4 @@
 	url = https://github.com/cshoredaniel/linux-2.6-wm8650-configs.git
 [submodule "ANDROID_2.6.32"]
 	path = ANDROID_2.6.32
-	url = https://github.com/cshoredaniel/torvalds-linux
-	branch = v2.6.32/android/wm8650-cshore
+	url = github.com:danielfdickinson/wm8650-kernel
