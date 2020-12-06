@@ -76,23 +76,6 @@ $(BUILD_DIR)/include/config/kernel.release: $(BUILD_DIR)/include/config/auto.con
 	{ set -o pipefail; time sh -c "KERNELRELEASE=$$(cat $(BUILD_DIR)/include/config/kernel.release|tr -d ' \n') $(shell grep -m1 '^VERSION *= *' $(SOURCE_DIR)/Makefile|tr -d ' \n') $(shell grep -m1 '^PATCHLEVEL *= *' $(SOURCE_DIR)/Makefile|tr -d ' \n') $(shell grep -m1 '^SUBLEVEL *= *' $(SOURCE_DIR)/Makefile|tr -d ' \n') $(shell grep -m1 '^EXTRAVERSION *= *' $(SOURCE_DIR)/Makefile|tr -d ' \n') make -C $(BUILD_DIR) -f $(SOURCE_DIR)/scripts/package/Makefile O=$(BUILD_DIR) CROSS_COMPILE=$(CROSS_COMPILE) KBUILD_IMAGE=$(KBUILD_IMAGE) CONFIG_SHELL=$(CONFIG_SHELL) $(if $(V),V=$(V)) ARCH=$(KARCH) $(if $(J),'-j') $(if $(V),V=$(V)) $@" 2>&1 | tee build-package-$@$(shell cat localversion10confnum)-$(shell cat buildnum)-$(shell sh -c "date -Iminutes|tr ':' '-'").log; }
 	if [ -d $(BUILD_DIR) ] && [ -r $(BUILD_DIR)/.version ]; then cp -f $(BUILD_DIR)/.version $(CURDIR)/buildnum; fi
 
-%config: $(BUILD_DIR)
-	if [ -r $(BUILD_DIR)/.version ]; then cp -f $(BUILD_DIR)/.version $(CURDIR)/buildnum; fi
-	if [ -r $(CURDIR)/buildnum ]; then cp -f $(CURDIR)/buildnum $(BUILD_DIR)/.version; fi
-	echo "-wm8650" >$(BUILD_DIR)/localversion50platform
-	cp -f $(MYCONFIG) $(BUILD_DIR)/.config
-	make -C $(SOURCE_DIR) O=$(BUILD_DIR) MAKEFLAGS="$(SUBMAKEFLAGS)" $@
-	$(call maybe_update_confnum) ; RET=$$? ; \
-		if [ "$${RET}" = "2" ]; then \
-			echo "Updating config" ; \
-			cp -f $(CURDIR)/localversion10confnum $(BUILD_DIR)/localversion10confnum; \
-			cp -f $(BUILD_DIR)/.config $(MYCONFIG); \
-			echo "Updated config" ; \
-		elif [ "$${RET}" != "0" ]; then \
-			echo "Something went wrong checking the config"; \
-			false; \
-		fi
-
 # The .config logic is 'borrowed' from the kernel source
 # Without this unnecesary building occurs.
 # To avoid any implicit rule to kick in, define an empty command
@@ -120,13 +103,30 @@ modules:
 	{ set -o pipefail; time sh -c "KERNELRELEASE=$$(cat $(BUILD_DIR)/include/config/kernel.release|tr -d ' \n') $(shell grep -m1 '^VERSION *= *' $(SOURCE_DIR)/Makefile|tr -d ' \n') $(shell grep -m1 '^PATCHLEVEL *= *' $(SOURCE_DIR)/Makefile|tr -d ' \n') $(shell grep -m1 '^SUBLEVEL *= *' $(SOURCE_DIR)/Makefile|tr -d ' \n') $(shell grep -m1 '^EXTRAVERSION *= *' $(SOURCE_DIR)/Makefile|tr -d ' \n') make -C $(BUILD_DIR) O=$(BUILD_DIR) CROSS_COMPILE=$(CROSS_COMPILE) KBUILD_IMAGE=$(KBUILD_IMAGE) CONFIG_SHELL=$(CONFIG_SHELL) $(if $(V),V=$(V)) ARCH=$(KARCH) $(if $(J),'-j') $(if $(V),V=$(V)) $@" 2>&1 | tee build-modules-$@$(shell cat localversion10confnum)-$(shell cat buildnum)-$(shell sh -c "date -Iminutes|tr ':' '-'").log; }
 
 backports-%config:
-	if [ ! -r $(BUILD_DIR)/.config ]; then exit 1; fi # Error config if we haven't used main kernel %config already
+	if [ ! -r $(BUILD_DIR)/.config ]; then { echo "Missing kernel config; needed before backports config"; exit 1; }; fi # Error config if we haven't used main kernel %config already
 	cp -f $(MYBPCONFIG) $(BACKPORTS_SOURCE_DIR)/.config
 	make -C $(BACKPORTS_SOURCE_DIR) KLIB_BUILD=$(BUILD_DIR) CROSS_COMPILE=$(CROSS_COMPILE) ARCH=$(KARCH) MAKEFLAGS="$(SUBMAKEFLAGS) $(BPSUB)" $(subst backports-,,$@)
 	$(call maybe_update_confnum) ; RET=$$? ; \
 		if [ "$${RET}" = "2" ]; then \
 			cp -f $(CURDIR)/localversion10confnum $(BUILD_DIR)/localversion10confnum; \
 			cp -f $(BACKPORTS_SOURCE_DIR)/.config $(MYBPCONFIG); \
+		elif [ "$${RET}" != "0" ]; then \
+			echo "Something went wrong checking the config"; \
+			false; \
+		fi
+
+%config: $(BUILD_DIR)
+	if [ -r $(BUILD_DIR)/.version ]; then cp -f $(BUILD_DIR)/.version $(CURDIR)/buildnum; fi
+	if [ -r $(CURDIR)/buildnum ]; then cp -f $(CURDIR)/buildnum $(BUILD_DIR)/.version; fi
+	echo "-wm8650" >$(BUILD_DIR)/localversion50platform
+	cp -f $(MYCONFIG) $(BUILD_DIR)/.config
+	make -C $(SOURCE_DIR) O=$(BUILD_DIR) MAKEFLAGS="$(SUBMAKEFLAGS)" $@
+	$(call maybe_update_confnum) ; RET=$$? ; \
+		if [ "$${RET}" = "2" ]; then \
+			echo "Updating config" ; \
+			cp -f $(CURDIR)/localversion10confnum $(BUILD_DIR)/localversion10confnum; \
+			cp -f $(BUILD_DIR)/.config $(MYCONFIG); \
+			echo "Updated config" ; \
 		elif [ "$${RET}" != "0" ]; then \
 			echo "Something went wrong checking the config"; \
 			false; \
